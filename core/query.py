@@ -230,3 +230,18 @@ class BusQuery:
         )
         logger.info(f"query result: {bus_realtime_info}")
         return bus_realtime_info
+
+    def get_dep_time(self, line_id: str) -> Optional[list[dict]]:
+        """获取线路的发车时间"""
+        try:
+            data = self._make_api_call_with_retry(
+                self.api.get_time_table,
+                line_id=line_id
+            )
+            if not data:
+                logger.warning(f"Failed to get line detail for line {line_id}")
+                return None
+            return data.get("timetable", None)
+        except Exception as e:
+            logger.error(f"Error getting departure time for line {line_id}: {str(e)}")
+            return None

@@ -185,7 +185,7 @@ class BusApi:
                 return json_data["jsonr"]["data"]
         return None
 
-    def get_time_table(self, s_id: str, line_id: str, city_id: str = None,
+    def get_time_table(self, line_id: str, s_id: str = None, city_id: str = None,
                      lat: str = None, lng: str = None) -> Optional[dict]:
         """
         时间表
@@ -197,7 +197,7 @@ class BusApi:
         """
         params = {
             "cityId": city_id if city_id else self.city_id,
-            "stationId": s_id,
+            "stationId": s_id if s_id else config.get("location", "stationId"),
             "lineId": line_id,
             "geo_type": "gcj",
             "geo_lng": lng if lng else self.wgs_lng,

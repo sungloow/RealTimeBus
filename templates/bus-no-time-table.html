@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时公交信息</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // 启用 class 策略的暗色模式
+        }
+    </script>
+    <link rel="icon" href="/static/bus.svg" type="image/svg+xml">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <style>
+        html {
+            overflow-y: scroll;
+        }
+
+        .bus-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .bus-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .collapse-transition {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body x-data="{
+    apiUrl: 'http://127.0.0.1:8000/api/v1/bus/realtime',
+    // apiUrl: 'http://127.0.0.1:8000:8000/test',
+    darkMode: localStorage.getItem('darkMode') === 'true',
+    busData: [],
+    frontlimit: 2,
+    timestamp: 'N/A',
+    loading: true,
+    errorMsg: '',
+    errorTimer: null,
+    showError(msg) {
+        this.errorMsg = msg;
+        clearTimeout(this.errorTimer); // 清除之前的定时器
+        this.errorTimer = setTimeout(() => {
+            this.errorMsg = ''; // 在 3 秒后清空错误信息
+        }, 3000);
+    },
+    expandedLines: {},
+    toggleExpand(lineName) {
+        this.expandedLines[lineName] = !this.expandedLines[lineName];
+    },
+    async fetchData() {
+        this.loading = true;
+        try {
+            const response = await fetch(this.apiUrl);
+            if (!response.ok) throw new Error('网络请求失败');
+            const data = await response.json();
+            // 检查返回数据的状态
+            if (data.status !== 200) {
+                this.showError(data.message || '未知错误'); // 提取 msg 信息，如果没有 msg 显示默认错误
+                return; // 终止后续逻辑
+            }
+            this.busData = data.data;
+            this.timestamp = data.timestamp;
+            this.frontlimit = data.frontlimit;
+            this.busData.forEach(line => {
+                if (!(line.line_name in this.expandedLines)) {
+                    this.expandedLines[line.line_name] = false;
+                }
+            });
+            this.errorMsg = '';
+            if (this.busData.length === 0) {
+                this.showError('暂无数据');
+            }
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.loading = false;
+        }
+    }
+}" x-init="
+    if (darkMode) document.documentElement.classList.add('dark');
+    $watch('darkMode', value => {
+        localStorage.setItem('darkMode', value);
+        if (value) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    });
+    fetchData();
+    setInterval(fetchData, 30000);
+" class="transition-colors duration-300">
+
+    <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+        <!-- 头部导航 -->
+        <header class="bg-white dark:bg-gray-800 shadow-md">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                    实时公交信息
+                </h1>
+                <div class="flex gap-4">
+                    <button @click="darkMode = !darkMode"
+                        class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <span x-text="darkMode ? '☀️' : '🌙'" class="text-xl"></span>
+                    </button>
+                    <button @click="fetchData()"
+                        class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        :disabled="loading">
+                        <span class="text-xl" :class="{ 'animate-spin': loading }">🔄</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要内容区 -->
+        <main class="container mx-auto px-4 py-8">
+
+            <!-- 加载状态 -->
+            <div x-show="loading"
+                class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded shadow-lg flex items-center space-x-2"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform -translate-y-4 -translate-x-1/2"
+                x-transition:enter-end="opacity-100 transform translate-y-0 -translate-x-1/2"
+                x-transition:leave="transition ease-in duration-300"
+                x-transition:leave-start="opacity-100 transform translate-y-0 -translate-x-1/2"
+                x-transition:leave-end="opacity-0 transform -translate-y-4 -translate-x-1/2">
+                <span>加载中...</span>
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+            </div>
+
+            <!-- 错误提示 -->
+            <div x-show="errorMsg"
+                class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-lg flex items-center space-x-2"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform -translate-y-4 -translate-x-1/2"
+                x-transition:enter-end="opacity-100 transform translate-y-0 -translate-x-1/2"
+                x-transition:leave="transition ease-in duration-300"
+                x-transition:leave-start="opacity-100 transform translate-y-0 -translate-x-1/2"
+                x-transition:leave-end="opacity-0 transform -translate-y-4 -translate-x-1/2">
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01M12 17h.01M12 3c-4.418 0-8 3.582-8 8s3.582 8 8 8 8-3.582 8-8-3.582-8-8-8z" />
+                </svg>
+                <span x-text="errorMsg"></span>
+            </div>
+
+            <!-- 公交信息网格 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <template x-for="line in busData" :key="line.line_name">
+                    <div class="bus-card bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 animate-fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold text-gray-800 dark:text-white" x-text="'线路：' + line.line_name">
+                            </h2>
+                            <span
+                                class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded-full text-sm">
+                                <span x-text="line.realtime_bus_info.length"></span> 辆车
+                            </span>
+                        </div>
+
+                        <div class="flex items-center space-x-4 text-gray-600 dark:text-gray-300">
+                            <p><span x-text="'站点: '"></span><span class="font-bold"
+                                    x-text="line.target_station_name"></span></p>
+                            <p><span x-text="'开往: '"></span><span x-text="line.target_station_next_station_name"></span>
+                            </p>
+                        </div>
+
+                        <div class="mt-4 space-y-4">
+                            <template x-if="line.realtime_bus_info.length > 0">
+                                <div>
+                                    <!-- 显示前3个车辆信息 -->
+                                    <template x-for="(info, index) in line.realtime_bus_info.slice(0, frontlimit)"
+                                        :key="info.bus_id">
+                                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg mb-3">
+                                            <!-- 第一行：预计到站和时间 -->
+                                            <div
+                                                class="flex justify-between items-center text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                                <span x-text="'预计到站: ' + info.opt_arrival_time_display"></span>
+                                                <span x-text="info.optimistic_time_display"
+                                                    x-effect="info.optimistic_time"
+                                                    :class="info.optimistic_time <= 600 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
+                                                    class="font-bold">
+                                                </span>
+                                            </div>
+                                            <!-- 第二行：车牌号 -->
+                                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2"
+                                                x-text="'车牌号: ' + info.bus_id"></p>
+                                            <!-- 第三行：剩余站数和剩余距离 -->
+                                            <div
+                                                class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                                <span x-text="'剩余站数: ' + info.number_of_stations_away"></span>
+                                                <span x-text="'剩余距离: ' + info.distance_to_target_display"></span>
+                                            </div>
+                                            <!-- 第四行：描述信息 -->
+                                            <p class="text-sm text-blue-600 dark:text-blue-400 font-bold"
+                                                x-text="info.desc"></p>
+                                        </div>
+                                    </template>
+
+                                    <!-- 折叠区域 -->
+                                    <template x-if="line.realtime_bus_info.length > frontlimit">
+                                        <div>
+
+                                            <div x-show="!expandedLines[line.line_name]" class="text-center py-2">
+                                                <button @click="toggleExpand(line.line_name)"
+                                                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                                                    展开更多 (还有 <span
+                                                        x-text="line.realtime_bus_info.length - frontlimit"></span> 辆车)
+                                                </button>
+                                            </div>
+
+                                            <div x-show="expandedLines[line.line_name]" class="collapse-transition"
+                                                x-transition:enter="transition ease-out duration-300"
+                                                x-transition:enter-start="opacity-0 transform -translate-y-4"
+                                                x-transition:enter-end="opacity-100 transform translate-y-0"
+                                                x-transition:leave="transition ease-in duration-300"
+                                                x-transition:leave-start="opacity-100 transform translate-y-0"
+                                                x-transition:leave-end="opacity-0 transform -translate-y-4">
+
+                                                <template x-for="info in line.realtime_bus_info.slice(frontlimit)"
+                                                    :key="info.bus_id">
+                                                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg mb-3">
+                                                        <div
+                                                            class="flex justify-between items-center text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                                            <span
+                                                                x-text="'预计到站: ' + info.opt_arrival_time_display"></span>
+                                                            <span x-text="info.optimistic_time_display"
+                                                                x-effect="info.optimistic_time"
+                                                                :class="info.optimistic_time <= 600 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
+                                                                class="font-bold">
+                                                            </span>
+                                                        </div>
+                                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2"
+                                                            x-text="'车牌号: ' + info.bus_id"></p>
+                                                        <div
+                                                            class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                                            <span
+                                                                x-text="'剩余站数: ' + info.number_of_stations_away"></span>
+                                                            <span
+                                                                x-text="'剩余距离: ' + info.distance_to_target_display"></span>
+                                                        </div>
+                                                        <p class="text-sm text-blue-600 dark:text-blue-400 font-bold"
+                                                            x-text="info.desc"></p>
+                                                    </div>
+                                                </template>
+
+                                                <div class="text-center py-2">
+                                                    <button @click="toggleExpand(line.line_name)"
+                                                        class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                                                        收起
+                                                    </button>
+                                                </div>
+                                            </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="line.realtime_bus_info.length === 0">
+                                <div class="text-center text-gray-500 dark:text-gray-400 py-4">
+                                    <template x-if="line.line_info_short_desc !== ''">
+                                        <div>
+                                            <p class="font-bold" x-text="line.line_info_short_desc"></p>
+                                            <p x-text="line.line_desc"></p>
+                                            <p x-text="line.line_assist_desc"></p>
+                                        </div>
+                                    </template>
+                                    <template class="font-bold" x-if="line.line_info_short_desc === ''">
+                                        <p>暂无实时信息</p>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="bg-white dark:bg-gray-800 shadow-md mt-8">
+            <div class="container mx-auto px-4 py-4 text-center text-gray-600 dark:text-gray-300">
+                <p>数据更新时间：<span x-text="timestamp" class="font-bold"></span></p>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

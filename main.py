@@ -1,18 +1,15 @@
 import json
-
 from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Union
+from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
+from typing import List, Union
 from pydantic import BaseModel, Field
 import uvicorn
 import asyncio
 import logging
-
-from starlette.responses import HTMLResponse
-from starlette.staticfiles import StaticFiles
-from starlette.templating import Jinja2Templates
-
 from core.query import BusQuery
 from utils import get_now_time
 
@@ -21,8 +18,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s[%(lineno)d] - %(levelname)s - %(message)s'
 )
-
-# 获取日志记录器
 logger = logging.getLogger(__name__)
 
 # 响应模型
@@ -55,10 +50,23 @@ class RealtimeResponse(BaseModel):
     data: List[LineRealTimeInfo] = Field(description="实时公交数据")
     frontlimit: int = Field(default=1, description="前端限制显示的线路数量")
 
-class ErrorResponse(BaseModel):
-    error: str
-    detail: Optional[str] = None
+class TimeTable(BaseModel):
+    eTime: str
+    fTime: str
+    times: List[str]
+
+class TimeTableResponse(BaseModel):
+    status: int = Field(description="状态码，200表示成功")
+    message: str = Field(description="状态描述")
     timestamp: str = Field(description="响应时间")
+    data: List[TimeTable] = Field(description="发车时间表")
+
+
+# 自定义异常类
+class CustomException(Exception):
+    def __init__(self, status: int, message: str):
+        self.status = status
+        self.message = message
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -76,37 +84,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 自定义异常处理
+@app.exception_handler(CustomException)
+async def custom_exception_handler(request: Request, exc: CustomException):
+    logger.error(f"CustomException: {exc.message}")
+    return JSONResponse(
+        status_code=exc.status,
+        content={"status": exc.status, "message": exc.message}
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    logger.error(f"HTTPException: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"status": exc.status_code, "message": exc.detail}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled Exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"status": 500, "message": "Internal Server Error"}
+    )
+
 # 依赖项：获取BusQuerySystem实例
 async def get_bus_query_system():
     return BusQuery()
 
-# 自定义异常处理
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            error=exc.detail,
-            timestamp=get_now_time()
-        ).dict()
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request, exc):
-    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content=ErrorResponse(
-            error="Internal server error",
-            detail=str(exc),
-            timestamp=get_now_time()
-        ).dict()
-    )
-
 # API路由
 @app.get("/api/v1", response_model=dict)
 async def root():
-    """API根路径，返回基本信息"""
     return {
         "service": "实时公交查询服务",
         "version": "1.0.0",
@@ -115,27 +124,16 @@ async def root():
     }
 
 @app.get("/api/v1/bus/realtime", response_model=RealtimeResponse)
-async def get_realtime_bus_info(
-        bus_query: BusQuery = Depends(get_bus_query_system)
-):
-    """
-    获取实时公交信息
-
-    返回:
-        status: 状态码
-        message: 状态描述
-        total: 返回的线路总数
-        timestamp: 响应时间
-        data: 所有配置线路的实时公交信息
-        frontlimit: 前端限制显示的线路数量
-    """
-    front_limit = 2
+async def get_realtime_bus_info(bus_query: BusQuery = Depends(get_bus_query_system)):
+    front_limit = 1
     try:
-        # 创建异步任务
-        loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(None, bus_query.query)
-        # 构造响应
-        response = RealtimeResponse(
+        results = await asyncio.get_event_loop().run_in_executor(None, bus_query.query)
+        if not results:
+            raise CustomException(
+                status=404,
+                message="Realtime bus data could not be retrieved."
+            )
+        return RealtimeResponse(
             status=200,
             message="success",
             total=len(results),
@@ -143,38 +141,46 @@ async def get_realtime_bus_info(
             data=results,
             frontlimit=front_limit
         )
-        return response
+    except CustomException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching bus information: {str(e)}", exc_info=True)
-        # 返回错误响应
-        return RealtimeResponse(
+        raise CustomException(
             status=500,
-            message=f"Failed to fetch bus information.",
-            total=0,
+            message="Failed to fetch bus information"
+        )
+
+@app.get("/api/v1/bus/time/{line_id}", response_model=TimeTableResponse)
+async def get_line_time(line_id: str, bus_query: BusQuery = Depends(get_bus_query_system)):
+    try:
+        results = await asyncio.get_event_loop().run_in_executor(None, bus_query.get_dep_time, line_id)
+        if not results:
+            raise CustomException(
+                status=404,
+                message=f"Line {line_id} does not exist."
+            )
+        return TimeTableResponse(
+            status=200,
+            message="success",
             timestamp=get_now_time(),
-            data=[],
-            frontlimit=front_limit
+            data=results
+        )
+    except CustomException:
+        raise
+    except Exception as e:
+        raise CustomException(
+            status=500,
+            message="Failed to fetch line time"
         )
 
 @app.get("/api/v1/bus/line/{line_name}", response_model=RealtimeResponse)
-async def get_line_info(
-        line_name: str,
-        bus_query: BusQuery = Depends(get_bus_query_system)
-):
-    """
-    获取指定线路的实时信息
-    """
+async def get_line_info(line_name: str, bus_query: BusQuery = Depends(get_bus_query_system)):
     try:
         results = await asyncio.get_event_loop().run_in_executor(None, bus_query.query)
         line_info = next((line for line in results if line["line_name"] == line_name), None)
-
         if not line_info:
-            raise RealtimeResponse(
+            raise CustomException(
                 status=404,
-                message=f"Line {line_name} not found",
-                total=0,
-                timestamp=get_now_time(),
-                data=[]
+                message=f"Line {line_name} does not exist."
             )
         return RealtimeResponse(
             status=200,
@@ -183,27 +189,16 @@ async def get_line_info(
             timestamp=get_now_time(),
             data=[line_info]
         )
-    except HTTPException:
+    except CustomException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching line information: {str(e)}", exc_info=True)
-        raise RealtimeResponse(
+        raise CustomException(
             status=500,
-            message=f"Failed to fetch line information.",
-            total=0,
-            timestamp=get_now_time(),
-            data=[]
+            message="Failed to fetch line information"
         )
-
-# 健康检查接口
-@app.get("/health")
-async def health_check():
-    """健康检查接口"""
-    return {"status": "healthy", "timestamp": get_now_time()}
 
 @app.get("/test")
 async def test(file_name: Union[str, None] = Query(default="mock.json", description="The name of the file to read")):
-    """test"""
     logger.info(f"file_name: {file_name}")
     try:
         with open(f"test/data/{file_name}", "r", encoding="utf-8") as file:
@@ -216,21 +211,19 @@ async def test(file_name: Union[str, None] = Query(default="mock.json", descript
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": get_now_time()}
 
-
-# 挂载静态文件目录
+# 静态文件和模板配置
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 使用 Jinja2 模板引擎
 templates = Jinja2Templates(directory="templates")
 
-# 定义一个路由来提供 HTML 文件
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("bus.html", {"request": request})
 
-
-# 用于开发环境的启动代码
+# 启动代码
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
