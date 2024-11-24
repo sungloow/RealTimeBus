@@ -1,10 +1,9 @@
 import json
-from functools import partial
 
 from fastapi import FastAPI, HTTPException, Depends, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Annotated, Union
+from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 import uvicorn
 import asyncio
