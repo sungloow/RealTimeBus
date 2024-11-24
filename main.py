@@ -125,7 +125,7 @@ async def root():
 
 @app.get("/api/v1/bus/realtime", response_model=RealtimeResponse)
 async def get_realtime_bus_info(bus_query: BusQuery = Depends(get_bus_query_system)):
-    front_limit = 1
+    front_limit = 2
     try:
         results = await asyncio.get_event_loop().run_in_executor(None, bus_query.query)
         if not results:
