@@ -1,6 +1,6 @@
 import json
 
-from fastapi import FastAPI, HTTPException, Depends, Query, Path
+from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union
@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 import uvicorn
 import asyncio
 import logging
+
+from starlette.responses import HTMLResponse
+from starlette.templating import Jinja2Templates
 
 from core.query import BusQuery
 from utils import get_now_time
@@ -100,7 +103,7 @@ async def general_exception_handler(request, exc):
     )
 
 # API路由
-@app.get("/", response_model=dict)
+@app.get("/api/v1", response_model=dict)
 async def root():
     """API根路径，返回基本信息"""
     return {
@@ -211,6 +214,20 @@ async def test(file_name: Union[str, None] = Query(default="mock.json", descript
         raise HTTPException(status_code=500, detail="Invalid JSON format")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# 挂载静态文件目录
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 使用 Jinja2 模板引擎
+templates = Jinja2Templates(directory="templates")
+
+# 定义一个路由来提供 HTML 文件
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("bus.html", {"request": request})
+
 
 # 用于开发环境的启动代码
 if __name__ == "__main__":
