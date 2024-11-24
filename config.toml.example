@@ -1,0 +1,40 @@
+[api_parameters]
+gpstype = "wgs"
+s = "android"
+v = "3.80.0"
+src = "xxx"
+userId = ""
+sign = "xxxxx"
+
+[api_endpoint]
+cityList = "https://xxx"
+homePageInfo = "https://xxx"
+lineDetail = "http://xxx"
+busesDetail = "http://xxx"
+getBusTime = "http://xxxx"
+
+[location]
+stationId = "110"
+sn = "xxx"
+lat = "xxx1352"
+lng = "xxx.48990560932613"
+wgsLat = "xxx16"
+wgsLng = "xxx8136"
+cityId = "001"
+cityName = "xx"
+
+[amap]
+geo_url = "https://restapi.amap.com/v3/geocode/geo"
+key = "xxx"
+
+
+[target_station]
+id = "111"
+name = "xx"
+
+[[focus_line]]
+line_id = "xxx-0"
+line_name = "xxx"
+[[focus_line]]
+line_id = "xxx-0"
+line_name = "xxx"
