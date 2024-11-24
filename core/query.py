@@ -231,7 +231,7 @@ class BusQuery:
         logger.info(f"query result: {bus_realtime_info}")
         return bus_realtime_info
 
-    def get_dep_time(self, line_id: str) -> Optional[list[dict]]:
+    def get_dep_time(self, line_id: str) -> Optional[list]:
         """获取线路的发车时间"""
         try:
             data = self._make_api_call_with_retry(
