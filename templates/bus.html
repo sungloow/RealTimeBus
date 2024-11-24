@@ -11,6 +11,8 @@
             darkMode: 'class', // 启用 class 策略的暗色模式
         }
     </script>
+    <link rel="icon" href="/static/bus.svg" type="image/svg+xml">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <style>
@@ -201,7 +203,7 @@
                                         <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg mb-3">
                                             <!-- 第一行：预计到站和时间 -->
                                             <div
-                                                class="flex justify-between items-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                                class="flex justify-between items-center text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                                 <span x-text="'预计到站: ' + info.opt_arrival_time_display"></span>
                                                 <span x-text="info.optimistic_time_display"
                                                     x-effect="info.optimistic_time"
@@ -248,7 +250,7 @@
                                                     :key="info.bus_id">
                                                     <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg mb-3">
                                                         <div
-                                                            class="flex justify-between items-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                                            class="flex justify-between items-center text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                                             <span
                                                                 x-text="'预计到站: ' + info.opt_arrival_time_display"></span>
                                                             <span x-text="info.optimistic_time_display"

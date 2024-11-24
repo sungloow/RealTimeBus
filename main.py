@@ -10,6 +10,7 @@ import asyncio
 import logging
 
 from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from core.query import BusQuery
@@ -218,7 +219,7 @@ async def test(file_name: Union[str, None] = Query(default="mock.json", descript
 
 
 # 挂载静态文件目录
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 使用 Jinja2 模板引擎
 templates = Jinja2Templates(directory="templates")
