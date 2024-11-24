@@ -1,0 +1,5 @@
+fastapi==0.115.5
+pydantic==2.10.1
+Requests==2.32.3
+toml==0.10.2
+uvicorn==0.32.1
