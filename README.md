@@ -14,5 +14,5 @@ kill -9 <PID>
 ```
 
 ```bash
-vim /etc/nginx/conf.d/bus.ggbor.com.conf
+vim /etc/nginx/conf.d/cxx.com.conf
 ```
