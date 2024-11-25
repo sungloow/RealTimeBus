@@ -269,8 +269,8 @@
     },
 
     // 从 localStorage 获取自动刷新状态
-    // autoRefresh: localStorage.getItem('autoRefresh') === null ? true : localStorage.getItem('autoRefresh') === 'true', // 默认false
-    autoRefresh: localStorage.getItem('autoRefresh') === 'true', // 默认true
+    autoRefresh: localStorage.getItem('autoRefresh') === null ? true : localStorage.getItem('autoRefresh') === 'true', // 默认true
+    // autoRefresh: localStorage.getItem('autoRefresh') === 'true', // 默认false
     refreshInterval: null,
 
     // 添加切换自动刷新的方法
