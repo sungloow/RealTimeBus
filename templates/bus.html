@@ -8,82 +8,100 @@
     <!-- 添加 Safari 特定的元标签 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
     <title>实时公交信息</title>
+
+    <!-- ailwind CSS 引入 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class', // 启用 class 策略的暗色模式
+            theme: {
+                extend: {
+                    // 如果需要自定义主题，在这里添加
+                }
+            }
         }
     </script>
+
     <link rel="icon" href="/static/bus.svg" type="image/svg+xml">
 
-    <!-- 确保 Alpine.js 在其他脚本之前加载 -->
+    <!-- Alpine.js -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
 
-    <!-- 添加 Safari 兼容性 polyfill -->
+    <!-- Safari 兼容性 polyfill -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/7.12.1/polyfill.min.js"></script>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
     <style>
-        /* 修复 Safari 中的弹性布局问题 */
+        /* Safari 兼容性样式 */
         .flex {
             display: -webkit-box;
             display: -webkit-flex;
             display: flex;
         }
 
-        /* 修复 Safari 中的网格布局问题 */
         .grid {
             display: -webkit-grid;
             display: grid;
         }
 
-        /* 修复 Safari 中的转换动画 */
         .transform {
             -webkit-transform: translateX(-50%);
             transform: translateX(-50%);
         }
 
-        /* 修复 Safari 中的过渡效果 */
         .transition {
             -webkit-transition: all 0.3s ease;
             transition: all 0.3s ease;
         }
 
-        /* 修复 Safari 中的滚动行为 */
         .overflow-y-auto {
             -webkit-overflow-scrolling: touch;
         }
 
-        /* 确保在 Safari 中正确渲染圆角 */
         .rounded-lg {
             -webkit-border-radius: 0.5rem;
             border-radius: 0.5rem;
         }
 
-        /* 修复 Safari 中的阴影效果 */
         .shadow-lg {
             -webkit-box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
+        /* 其他自定义样式 */
         html {
             overflow-y: scroll;
         }
 
         .bus-card {
+            -webkit-transition: -webkit-transform 0.3s ease, box-shadow 0.3s ease;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .bus-card:hover {
+            -webkit-transform: translateY(-5px);
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
 
         .animate-fade-in {
+            -webkit-animation: fadeIn 0.5s ease-in;
             animation: fadeIn 0.5s ease-in;
+        }
+
+        @-webkit-keyframes fadeIn {
+            from {
+                opacity: 0;
+                -webkit-transform: translateY(20px);
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                -webkit-transform: translateY(0);
+                transform: translateY(0);
+            }
         }
 
         @keyframes fadeIn {
@@ -99,16 +117,41 @@
         }
 
         .collapse-transition {
+            -webkit-transition: all 0.3s ease-in-out;
             transition: all 0.3s ease-in-out;
             overflow: hidden;
         }
 
         .modal {
+            -webkit-transition: opacity 0.3s ease-in-out;
             transition: opacity 0.3s ease-in-out;
         }
 
         .modal-content {
+            -webkit-transition: -webkit-transform 0.3s ease-in-out;
             transition: transform 0.3s ease-in-out;
+        }
+
+        /* 添加暗色模式过渡效果 */
+        :root {
+            transition: background-color 0.3s ease;
+        }
+
+        /* 确保暗色模式样式优先级 */
+        .dark .dark\:bg-gray-800 {
+            background-color: rgb(31, 41, 55) !important;
+        }
+
+        .dark .dark\:bg-gray-900 {
+            background-color: rgb(17, 24, 39) !important;
+        }
+
+        .dark .dark\:text-white {
+            color: rgb(255, 255, 255) !important;
+        }
+
+        .dark .dark\:text-gray-300 {
+            color: rgb(209, 213, 219) !important;
         }
     </style>
 </head>
