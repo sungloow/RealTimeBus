@@ -353,7 +353,7 @@
     <header class="bg-white dark:bg-gray-800 shadow-md">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
-                实时公交信息
+                实时公交
             </h1>
             <div class="flex gap-6 items-center">
                 <!-- 深色模式开关 -->
@@ -361,7 +361,7 @@
                     <span class="text-sm text-gray-700 dark:text-gray-200">深色模式</span>
                     <button @click="darkMode = !darkMode"
                             class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none"
-                            :class="darkMode ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
+                            :class="darkMode ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-500'"
                             role="switch"
                             :aria-checked="darkMode">
                         <span class="absolute left-0.5 top-0.5 h-5 w-5 transform bg-white rounded-full shadow transition-transform duration-300 ease-in-out"
@@ -375,7 +375,7 @@
                     <span class="text-sm text-gray-700 dark:text-gray-200">自动刷新</span>
                     <button @click="toggleAutoRefresh"
                             class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none"
-                            :class="autoRefresh ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
+                            :class="autoRefresh ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-500'"
                             role="switch"
                             :aria-checked="autoRefresh">
                         <span class="absolute left-0.5 top-0.5 h-5 w-5 transform bg-white rounded-full shadow transition-transform duration-300 ease-in-out"
