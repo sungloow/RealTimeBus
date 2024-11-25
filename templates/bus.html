@@ -181,37 +181,6 @@
             touch-action: manipulation; /* 优化触摸操作 */
         }
 
-        /* 修改按钮样式类 */
-        .theme-button, .refresh-button {
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* 添加涟漪效果 */
-        .theme-button::after, .refresh-button::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 5px;
-            height: 5px;
-            background: rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            border-radius: 100%;
-            transform: scale(1, 1) translate(-50%, -50%);
-            transform-origin: 50% 50%;
-        }
-
-        .theme-button:active::after, .refresh-button:active::after {
-            opacity: 1;
-            transform: scale(20, 20) translate(-50%, -50%);
-            transition: transform 0.3s, opacity 0.2s;
-        }
-
-        /* 暗色模式下的涟漪效果 */
-        .dark .theme-button::after, .dark .refresh-button::after {
-            background: rgba(255, 255, 255, 0.1);
-        }
     </style>
 </head>
 
@@ -301,7 +270,38 @@
         setTimeout(() => {
             this.timeTableData = [];
         }, 300); // 等待过渡动画完成后清空数据
-    }
+    },
+
+    // 从 localStorage 获取自动刷新状态，默认为 false
+    autoRefresh: localStorage.getItem('autoRefresh') === null ? true : localStorage.getItem('autoRefresh') === 'true',
+    refreshInterval: null,
+
+    // 添加切换自动刷新的方法
+    toggleAutoRefresh() {
+        this.autoRefresh = !this.autoRefresh;
+        // 保存到 localStorage
+        localStorage.setItem('autoRefresh', this.autoRefresh);
+        if (this.autoRefresh) {
+          this.startAutoRefresh();
+        } else {
+          this.stopAutoRefresh();
+        }
+    },
+
+    startAutoRefresh() {
+        // 10s 刷新一次数据
+        this.refreshInterval = setInterval(() => {
+          this.fetchData();
+        }, 10000);
+    },
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+          clearInterval(this.refreshInterval);
+          this.refreshInterval = null;
+        }
+    },
+
 }" x-init="
     if (darkMode) document.documentElement.classList.add('dark');
     $watch('darkMode', value => {
@@ -312,8 +312,22 @@
             document.documentElement.classList.remove('dark');
         }
     });
+
+    // 初始加载数据
     fetchData();
-    setInterval(fetchData, 30000);
+
+    // 初始化时如果没有设置过自动刷新，存储默认值 true
+    if (localStorage.getItem('autoRefresh') === null) {
+        localStorage.setItem('autoRefresh', 'true');
+    }
+
+    // 如果启用了自动刷新，开始定时器
+    if (autoRefresh) {
+        startAutoRefresh();
+    }
+
+    // 在组件销毁时清理定时器
+    $cleanup(() => stopAutoRefresh());
 " class="transition-colors duration-300">
 
 <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
@@ -323,17 +337,48 @@
             <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
                 实时公交信息
             </h1>
-            <div class="flex gap-4">
-                <button @click="darkMode = !darkMode"
-                        class="theme-button p-2 rounded-full focus:outline-none"
-                        :aria-label="darkMode ? '切换到亮色模式' : '切换到暗色模式'">
-                    <span x-text="darkMode ? '☀️' : '🌙'" class="text-xl"></span>
-                </button>
+            <div class="flex gap-6 items-center">
+                <!-- 自动刷新开关 -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">自动刷新</span>
+                    <button @click="toggleAutoRefresh"
+                            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                            :class="autoRefresh ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
+                            role="switch"
+                            :aria-checked="autoRefresh">
+                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                              :class="autoRefresh ? 'translate-x-5' : 'translate-x-0'">
+                        </span>
+                    </button>
+                </div>
+
+                <!-- 深色模式开关 -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">深色模式</span>
+                    <button @click="darkMode = !darkMode"
+                            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                            :class="darkMode ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
+                            role="switch"
+                            :aria-checked="darkMode">
+                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                              :class="darkMode ? 'translate-x-5' : 'translate-x-0'">
+                        </span>
+                    </button>
+                </div>
+
+                <!-- 手动刷新按钮 -->
                 <button @click="fetchData()"
-                        class="refresh-button p-2 rounded-full focus:outline-none"
+                        class="inline-flex items-center justify-center p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="loading"
                         aria-label="刷新数据">
-                    <span class="text-xl" :class="{ 'animate-spin': loading }">🔄</span>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="h-5 w-5"
+                         :class="{ 'animate-spin': loading }"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor">
+                        <path stroke-linecap="round" troke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
                 </button>
             </div>
         </div>
