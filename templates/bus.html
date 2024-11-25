@@ -207,9 +207,17 @@
     },
     async fetchData() {
         this.loading = true;
+        // 创建超时 Promise
+        const timeout = 5000;
+        const timeoutId = setTimeout(() => reject(new Error('请求超时，请稍后再试')), timeout);
+        const timeoutPromise = new Promise((_, reject) => timeoutId);
         try {
-            const response = await fetch(this.apiUrl);
-            if (!response.ok) throw new Error('网络请求失败');
+            const response = await Promise.race([
+                fetch(this.apiUrl),
+                timeoutPromise,
+            ]);
+            clearTimeout(timeoutId); // 清理超时定时器
+            if (!response.ok) throw new Error('网络请求失败，请重试');
             const data = await response.json();
             // 检查返回数据的状态
             if (data.status !== 200) {
@@ -229,6 +237,7 @@
                 this.showError('暂无数据');
             }
         } catch (error) {
+            clearTimeout(timeoutId); // 清理超时定时器
             this.showError(error.message);
         } finally {
             this.loading = false;
@@ -237,15 +246,22 @@
     showTimeTableModal: false,
     timeTableData: [],
 
+
     async fetchTimeTable(lineId) {
         if (!lineId) return;
-
         this.showTimeTableModal = true;
         this.timeTableData = []; // 重置数据，显示加载状态
-
         const url = `${this.timeUrl}${lineId}`;
+        // 创建超时 Promise
+        const timeout = 5000;
+        const timeoutId = setTimeout(() => reject(new Error('请求超时，请稍后再试')), timeout);
+        const timeoutPromise = new Promise((_, reject) => timeoutId);
         try {
-            const response = await fetch(url);
+            const response = await Promise.race([
+                fetch(url),
+                timeoutPromise,
+            ]);
+            clearTimeout(timeoutId); // 清理超时定时器
             if (!response.ok) throw new Error('网络请求失败');
 
             const data = await response.json();
@@ -260,6 +276,7 @@
                 throw new Error('数据格式错误');
             }
         } catch (error) {
+            clearTimeout(timeoutId); // 清理超时定时器
             this.showError(error.message);
             this.closeTimeTableModal();
         }
@@ -272,8 +289,9 @@
         }, 300); // 等待过渡动画完成后清空数据
     },
 
-    // 从 localStorage 获取自动刷新状态，默认为 false
-    autoRefresh: localStorage.getItem('autoRefresh') === null ? true : localStorage.getItem('autoRefresh') === 'true',
+    // 从 localStorage 获取自动刷新状态
+    // autoRefresh: localStorage.getItem('autoRefresh') === null ? true : localStorage.getItem('autoRefresh') === 'true', // 默认false
+    autoRefresh: localStorage.getItem('autoRefresh') === 'true', // 默认true
     refreshInterval: null,
 
     // 添加切换自动刷新的方法
@@ -326,8 +344,8 @@
         startAutoRefresh();
     }
 
-    // 在组件销毁时清理定时器
-    $cleanup(() => stopAutoRefresh());
+    // 使用 window.addEventListener 清理定时器
+    window.addEventListener('beforeunload', stopAutoRefresh);
 " class="transition-colors duration-300">
 
 <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
@@ -338,30 +356,30 @@
                 实时公交信息
             </h1>
             <div class="flex gap-6 items-center">
-                <!-- 自动刷新开关 -->
-                <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-700 dark:text-gray-200">自动刷新</span>
-                    <button @click="toggleAutoRefresh"
-                            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                            :class="autoRefresh ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
-                            role="switch"
-                            :aria-checked="autoRefresh">
-                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                              :class="autoRefresh ? 'translate-x-5' : 'translate-x-0'">
-                        </span>
-                    </button>
-                </div>
-
                 <!-- 深色模式开关 -->
                 <div class="flex items-center gap-2">
                     <span class="text-sm text-gray-700 dark:text-gray-200">深色模式</span>
                     <button @click="darkMode = !darkMode"
-                            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                            class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none"
                             :class="darkMode ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
                             role="switch"
                             :aria-checked="darkMode">
-                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                              :class="darkMode ? 'translate-x-5' : 'translate-x-0'">
+                        <span class="absolute left-0.5 top-0.5 h-5 w-5 transform bg-white rounded-full shadow transition-transform duration-300 ease-in-out"
+                              :class="darkMode ? 'translate-x-6' : 'translate-x-0'">
+                        </span>
+                    </button>
+                </div>
+
+                <!-- 自动刷新开关 -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">自动刷新</span>
+                    <button @click="toggleAutoRefresh"
+                            class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none"
+                            :class="autoRefresh ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
+                            role="switch"
+                            :aria-checked="autoRefresh">
+                        <span class="absolute left-0.5 top-0.5 h-5 w-5 transform bg-white rounded-full shadow transition-transform duration-300 ease-in-out"
+                              :class="autoRefresh ? 'translate-x-6' : 'translate-x-0'">
                         </span>
                     </button>
                 </div>
