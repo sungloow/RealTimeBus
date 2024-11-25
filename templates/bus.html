@@ -137,37 +137,6 @@
             transition: background-color 0.3s ease;
         }
 
-        /* 确保暗色模式样式优先级 */
-        .dark .dark\:bg-gray-800 {
-            background-color: rgb(31, 41, 55) !important;
-        }
-
-        .dark .dark\:bg-gray-900 {
-            background-color: rgb(17, 24, 39) !important;
-        }
-
-        .dark .dark\:text-white {
-            color: rgb(255, 255, 255) !important;
-        }
-
-        .dark .dark\:text-gray-300 {
-            color: rgb(209, 213, 219) !important;
-        }
-
-        /* 修复移动端按钮点击效果 */
-        @media (hover: hover) {
-            /* 只在支持hover的设备上应用hover效果 */
-            button:hover {
-                background-color: rgba(0, 0, 0, 0.1);
-            }
-        }
-
-        /* 添加活动状态样式 */
-        button:active {
-            background-color: transparent !important;
-            transition: background-color 0.1s;
-        }
-
         /* 禁用移动设备上的hover效果 */
         @media (hover: none) {
             button:hover {
@@ -361,10 +330,7 @@
                     <span class="text-sm text-gray-700 dark:text-gray-200">深色模式</span>
                     <button @click="darkMode = !darkMode"
                             class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none"
-                            :class="{
-                                'bg-green-500': darkMode,
-                                'bg-gray-200 dark:bg-gray-600': !darkMode
-                            }"
+                            :class="darkMode ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-200'"
                             role="switch"
                             :aria-checked="darkMode">
                         <span class="absolute left-0.5 top-0.5 h-5 w-5 transform bg-white rounded-full shadow transition-transform duration-300 ease-in-out"
@@ -378,10 +344,7 @@
                     <span class="text-sm text-gray-700 dark:text-gray-200">自动刷新</span>
                     <button @click="toggleAutoRefresh"
                             class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none"
-                            :class="{
-                                'bg-green-500': autoRefresh,
-                                'bg-gray-200 dark:bg-gray-600': !autoRefresh
-                            }"
+                            :class="autoRefresh ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-200'"
                             role="switch"
                             :aria-checked="autoRefresh">
                         <span class="absolute left-0.5 top-0.5 h-5 w-5 transform bg-white rounded-full shadow transition-transform duration-300 ease-in-out"
