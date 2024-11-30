@@ -188,8 +188,8 @@
     },
     async fetchData() {
         this.loading = true;
-        // 创建超时 Promise
-        const timeout = 5000;
+        // 创建超时 Promise 2s
+        const timeout = 2000;
         const timeoutId = setTimeout(() => reject(new Error('请求超时，请稍后再试')), timeout);
         const timeoutPromise = new Promise((_, reject) => timeoutId);
         try {
@@ -232,8 +232,8 @@
         this.showTimeTableModal = true;
         this.timeTableData = []; // 重置数据，显示加载状态
         const url = `${this.timeUrl}${lineId}`;
-        // 创建超时 Promise
-        const timeout = 5000;
+        // 创建超时 Promise 2s
+        const timeout = 2000;
         const timeoutId = setTimeout(() => reject(new Error('请求超时，请稍后再试')), timeout);
         const timeoutPromise = new Promise((_, reject) => timeoutId);
         try {
@@ -289,10 +289,10 @@
     },
 
     startAutoRefresh() {
-        // 10s 刷新一次数据
+        // 3s 刷新一次数据
         this.refreshInterval = setInterval(() => {
           this.fetchData();
-        }, 10000);
+        }, 3000);
     },
 
     stopAutoRefresh() {

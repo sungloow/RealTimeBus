@@ -127,7 +127,7 @@ async def root():
 async def get_realtime_bus_info(bus_query: BusQuery = Depends(get_bus_query_system)):
     front_limit = 2
     try:
-        results = await asyncio.get_event_loop().run_in_executor(None, bus_query.query)
+        results = await bus_query.async_query()
         if not results:
             raise CustomException(
                 status=404,

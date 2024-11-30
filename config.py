@@ -12,4 +12,7 @@ class Config:
             return section_data.get(key, default)
         return section_data
 
+    def refresh(self):
+        self.config = toml.load(os.path.join(os.path.dirname(__file__), "config.toml"))
+
 config = Config()

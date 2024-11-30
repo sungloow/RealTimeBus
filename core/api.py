@@ -1,12 +1,14 @@
 import logging
 from typing import Optional
 
-import requests
 import json
+import aiohttp
 
 from config import config
+from core.exceptions import BusApiRequestError, BusApiResponseError
 
 logger = logging.getLogger(__name__)
+
 
 class BusApi:
     def __init__(self):
@@ -31,19 +33,81 @@ class BusApi:
         self.wgs_lng = config.get("location", "wgsLng")
 
     @staticmethod
-    def curl_request(url, method="GET", data=None, headers=None):
-        try:
-            if method == "POST":
-                response = requests.post(url, data=data, headers=headers, timeout=10)
-            else:
-                response = requests.get(url, params=data, headers=headers, timeout=10)
-            response.raise_for_status()
-            return response
-        except requests.RequestException as e:
-            logger.error(f"Request failed: {e}")
-            return None
+    def replace_response_special_chars(string) -> str:
+        """
+        替换响应中的特殊字符
+        :param string: 字符串
+        """
+        return string.replace("YGKJ##", "").replace("**YGKJ", "")
 
-    def get_city(self, gps_type: str = None, lat: str = None, lng: str = None) -> Optional[dict]:
+    @staticmethod
+    def _clean_request_params(params: Optional[dict]) -> Optional[dict]:
+        """清理请求参数，移除None值并转换类型"""
+        if not params:
+            return None
+        return {
+            k: str(v) if isinstance(v, (int, float)) else v
+            for k, v in params.items()
+            if v is not None
+        }
+
+    @staticmethod
+    async def async_request(url, data=None, headers=None, method="GET", timeout=10):
+        """异步HTTP请求"""
+        async def process_response(response):
+            """处理响应"""
+            try:
+                response.raise_for_status()
+                content_type = response.headers.get('Content-Type', '')
+                try:
+                    if 'application/json' in content_type:
+                        json_data = await response.json()
+                    else:
+                        text = await response.text()
+                        text = BusApi.replace_response_special_chars(text)
+                        json_data = json.loads(text)
+                except json.JSONDecodeError as e:
+                    raise BusApiResponseError(
+                        f"Failed to parse response as JSON: {str(e)}",
+                        f"raw_text: {await response.text()}",
+                    )
+                if not isinstance(json_data, dict):
+                    raise BusApiResponseError(
+                        "Invalid response format",
+                        f"json_data: {await response.text()}",
+                    )
+                jsonr = json_data.get("jsonr", {})
+                if jsonr.get("success"):
+                    return jsonr
+
+                error_msg = jsonr.get("errmsg", "Unknown error")
+                raise BusApiResponseError(
+                    f"API business error: {error_msg}",
+                    f"jsonr: {jsonr}",
+                )
+            except aiohttp.ClientResponseError as e:
+                raise BusApiRequestError(
+                    f"HTTP {e.status}: {e.message}",
+                    f"url: {url}, data: {data}",
+                )
+
+        try:
+            # 清理请求参数
+            data = BusApi._clean_request_params(data)
+            
+            async with aiohttp.ClientSession() as session:
+                if method == "POST":
+                    async with session.post(url, data=data, headers=headers, timeout=timeout) as response:
+                        return await process_response(response)
+                else:
+                    async with session.get(url, params=data, headers=headers, timeout=timeout) as response:
+                        return await process_response(response)
+        except aiohttp.ClientError as e:
+            raise BusApiRequestError(f"Request failed: {str(e)}", f"url: {url}, data: {data}")
+        except Exception as e:
+            raise BusApiRequestError(f"Unexpected error: {str(e)}", f"url: {url}, data: {data}")
+
+    async def get_city(self, gps_type: str = None, lat: str = None, lng: str = None) -> Optional[dict]:
         """
         获取城市信息
         :param gps_type: 坐标类型
@@ -60,22 +124,12 @@ class BusApi:
             "src": self.src,
             "userId": self.userId,
         }
-        response = self.curl_request(self.cityList, method="POST", data=params)
+        response = await self.async_request(self.cityList, method="POST", data=params)
         if response:
-            json_data = response.json()
-            if json_data.get("status") == "OK":
-                return json_data["data"].get("gpsRealtimeCity")
+            return response["data"].get("gpsRealtimeCity")
         return None
 
-    @staticmethod
-    def replace_response_special_chars(string) -> str:
-        """
-        替换响应中的特殊字符
-        :param string: 字符串
-        """
-        return string.replace("YGKJ##", "").replace("**YGKJ", "")
-
-    def get_arr(self, city_id: str = None, gps_type: str = None, lat: str = None, lng: str = None) -> Optional[dict]:
+    async def get_arr(self, city_id: str = None, gps_type: str = None, lat: str = None, lng: str = None) -> Optional[dict]:
         """
         获取附近站点的线路及信息
         :param city_id: city id from get_city method
@@ -98,15 +152,10 @@ class BusApi:
             "s": self.s,
             "v": self.v,
         }
-        response = self.curl_request(self.homePageInfo, data=params)
-        if response:
-            data = self.replace_response_special_chars(response.text)
-            json_data = json.loads(data)
-            if json_data.get("jsonr", {}).get("status") == "00":
-                return json_data["jsonr"]["data"]
-        return None
+        response = await self.async_request(self.homePageInfo, data=params)
+        return response["data"] if response else None
 
-    def get_line_detail(self, line_id: str, target_order: str = None, city_id: str = None,
+    async def async_get_line_detail(self, line_id: str, target_order: int = None, city_id: str = None,
                         lat: str = None, lng: str = None) -> Optional[dict]:
         """
         获取公交车实时信息
@@ -141,15 +190,10 @@ class BusApi:
             "s": self.s,
             "v": self.v,
         }
-        response = self.curl_request(self.lineDetail, data=params)
-        if response:
-            data = self.replace_response_special_chars(response.text)
-            json_data = json.loads(data)
-            if json_data.get("jsonr", {}).get("status") == "00":
-                return json_data["jsonr"]["data"]
-        return None
+        response = await self.async_request(self.lineDetail, data=params)
+        return response["data"] if response else None
 
-    def get_buses_detail(self, target_order: str, line_id: str,
+    async def get_buses_detail(self, target_order: str, line_id: str,
                          city_id: str = None, lat: str = None, lng: str = None) -> Optional[dict]:
         """
         获取公交车细节
@@ -177,15 +221,10 @@ class BusApi:
             "s": self.s,
             "v": self.v,
         }
-        response = self.curl_request(self.busesDetail, data=params)
-        if response:
-            data = self.replace_response_special_chars(response.text)
-            json_data = json.loads(data)
-            if json_data.get("jsonr", {}).get("status") == "00":
-                return json_data["jsonr"]["data"]
-        return None
+        response = await self.async_request(self.busesDetail, data=params)
+        return response["data"] if response else None
 
-    def get_time_table(self, line_id: str, s_id: str = None, city_id: str = None,
+    async def get_time_table(self, line_id: str, s_id: str = None, city_id: str = None,
                      lat: str = None, lng: str = None) -> Optional[dict]:
         """
         时间表
@@ -206,31 +245,24 @@ class BusApi:
             "s": self.s,
             "v": self.v,
         }
-        response = self.curl_request(self.getBusTime, data=params)
-        if response:
-            data = self.replace_response_special_chars(response.text)
-            json_data = json.loads(data)
-            if json_data.get("jsonr", {}).get("status") == "00":
-                return json_data["jsonr"]["data"]
-        return None
+        response = await self.async_request(self.getBusTime, data=params)
+        return response["data"] if response else None
 
-    def get_geocodes(self, city: str, address: str, key: str = None) -> Optional[list]:
+    async def get_geocodes(self, city: str, address: str, key: str = None) -> Optional[list]:
         key = key if key else config.get("amap", "key")
         params = {
             "key": key,
             "address": address,
             "city": city
         }
-        response = self.curl_request(config.get("amap", "geo_url"), data=params)
-        if response:
-            json_data = response.json()
-            if json_data.get("count") and json_data["geocodes"]:
-                return json_data["geocodes"]
+        response = await self.async_request(config.get("amap", "geo_url"), data=params)
+        if response and response.get("count") and response["geocodes"]:
+            return response["geocodes"]
         return None
 
-    def address_to_lat_lag(self, city: str, address: str, key: str = None) -> Optional[list]:
+    async def address_to_lat_lag(self, city: str, address: str, key: str = None) -> Optional[list]:
         key = key if key else config.get("amap", "key")
-        geocodes = self.get_geocodes(city, address, key)
+        geocodes = await self.get_geocodes(city, address, key)
         if geocodes:
             location = geocodes[0].get("location")
             return location.split(",") if location else None
