@@ -77,7 +77,7 @@ class BusApi:
                         f"json_data: {await response.text()}",
                     )
                 jsonr = json_data.get("jsonr", {})
-                if jsonr.get("success"):
+                if jsonr.get("success") or jsonr.get("status") == "00":
                     return jsonr
 
                 error_msg = jsonr.get("errmsg", "Unknown error")
@@ -246,6 +246,7 @@ class BusApi:
             "v": self.v,
         }
         response = await self.async_request(self.getBusTime, data=params)
+        print(response)
         return response["data"] if response else None
 
     async def get_geocodes(self, city: str, address: str, key: str = None) -> Optional[list]:

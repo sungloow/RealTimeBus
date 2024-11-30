@@ -152,7 +152,7 @@ async def get_realtime_bus_info(bus_query: BusQuery = Depends(get_bus_query_syst
 @app.get("/api/v1/bus/time/{line_id}", response_model=TimeTableResponse)
 async def get_line_time(line_id: str, bus_query: BusQuery = Depends(get_bus_query_system)):
     try:
-        results = await asyncio.get_event_loop().run_in_executor(None, bus_query.get_dep_time, line_id)
+        results = await bus_query.get_dep_time(line_id)
         if not results:
             raise CustomException(
                 status=404,
@@ -175,7 +175,7 @@ async def get_line_time(line_id: str, bus_query: BusQuery = Depends(get_bus_quer
 @app.get("/api/v1/bus/line/{line_name}", response_model=RealtimeResponse)
 async def get_line_info(line_name: str, bus_query: BusQuery = Depends(get_bus_query_system)):
     try:
-        results = await asyncio.get_event_loop().run_in_executor(None, bus_query.query)
+        results = await bus_query.async_query()
         line_info = next((line for line in results if line["line_name"] == line_name), None)
         if not line_info:
             raise CustomException(
