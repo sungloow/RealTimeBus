@@ -38,7 +38,7 @@ class BusQuery:
     def __init__(self):
         self.api = BusApi()
 
-    def _get_target_station_info(self) -> tuple[list, str]:
+    def _get_target_station_info(self):
         """获取目标站点配置信息"""
         config.refresh()
         lines = config.get("focus_line", [])
