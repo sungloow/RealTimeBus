@@ -32,6 +32,7 @@ def convert_time_to_str(minutes: int) -> str:
 
 line_cache = TTLCache(maxsize=len(config.get("focus_line", [])) * 2, ttl=config.get("system", "line_cache_ttl", 60*60*24))
 line_real_cache = TTLCache(maxsize=len(config.get("focus_line", [])) * 2, ttl=config.get("system", "line_real_cache_ttl", 10))
+time_table_cache = TTLCache(maxsize=len(config.get("focus_line", [])), ttl=config.get("system", "time_table_cache_ttl", 60*60*24))
 
 
 class BusQuery:
@@ -291,11 +292,16 @@ class BusQuery:
     async def get_dep_time(self, line_id: str) -> Optional[list]:
         """获取线路的发车时间"""
         try:
+            cache_key = f"time_table_{line_id}"
+            if cached_data := time_table_cache.get(cache_key):
+                logger.info(f"Time table cache key: {cache_key} found")
+                return cached_data
             data = await self.api.get_time_table(line_id=line_id)
-            if not data:
+            if not data and not data.get("timetable"):
                 logger.warning(f"Failed to get line detail for line {line_id}")
                 return None
-            return data.get("timetable", None)
+            time_table_cache[cache_key] = data.get("timetable")
+            return data.get("timetable")
         except Exception as e:
             logger.error(f"Error getting departure time for line {line_id}: {str(e)}")
             return None

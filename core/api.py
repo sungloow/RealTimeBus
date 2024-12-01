@@ -246,7 +246,6 @@ class BusApi:
             "v": self.v,
         }
         response = await self.async_request(self.getBusTime, data=params)
-        print(response)
         return response["data"] if response else None
 
     async def get_geocodes(self, city: str, address: str, key: str = None) -> Optional[list]:
